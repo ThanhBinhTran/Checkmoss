@@ -1,0 +1,132 @@
+.data
+mang: 	.word 48,99,10,68,36,46,93,38,67,61,22,16,26,7,72,78,65,2,90,55
+n: 	.word 20
+endline:.asciiz "\n"
+space:	.asciiz " "
+	
+.text
+
+main:
+	jal	print			# Mang chua sap xep
+
+	la	$a0, mang
+	lw	$t0, n
+	sll	$t0, $t0, 2
+	add	$a1, $a0, $t0
+	jal	sort
+	j	end
+		
+sort:
+	addi	$sp, $sp, -16
+	sw	$ra, 0($sp)	
+	sw	$a0, 4($sp)		# Phan tu dau
+	sw	$a1, 8($sp)		# Phan tu cuoi
+	
+	sub 	$t0, $a1, $a0
+	srl	$t0, $t0, 2	
+	ble	$t0, 1, sortend		# Mang co phan tu <= 1
+	
+	srl	$t0, $t0, 1
+	sll	$t0, $t0, 2
+	add	$a1, $a0, $t0
+	sw	$a1, 12($sp)		# Phan tu middle
+	
+	jal	sort
+	
+	lw	$a0, 12($sp)	
+	lw	$a1, 8($sp)
+	
+	jal	sort
+	
+	lw	$a0, 4($sp)
+	lw	$a1, 12($sp)	
+	lw	$a2, 8($sp)
+	
+	jal	merge
+	
+	
+sortend:				
+
+	lw	$ra, 0($sp)
+	addi	$sp, $sp, 16
+	jr	$ra
+	
+merge:
+	addi	$sp, $sp, -16	
+	sw	$ra, 0($sp)
+	sw	$a0, 4($sp)	
+	sw	$a1, 8($sp)
+	sw	$a2, 12($sp)
+	
+	move	$s0, $a0
+	move	$s1, $a1
+	
+mergeloop:
+
+	lw	$t0, 0($s0)
+	lw	$t1,  0($s1)
+	
+	ble	$t0, $t1, noshift
+	
+	move	$a0, $s1
+	move	$a1, $s0
+	jal	shift
+	
+	addi	$s1, $s1, 4
+	
+noshift:
+	addi	$s0, $s0, 4
+	
+	lw	$a2, 12($sp)
+	bge	$s0, $a2, mergeloopend
+	bge	$s1, $a2, mergeloopend
+	j	mergeloop
+	
+mergeloopend:
+	jal 	print
+	lw	$ra, 0($sp)
+	addi	$sp, $sp, 16
+	jr 	$ra	
+
+shift:
+	ble	$a0, $a1, shiftend
+	addi	$t6, $a0, -4		
+	lw	$t7, 0($a0)
+	lw	$t8, 0($t6)		
+	sw	$t7, 0($t6)		
+	sw	$t8, 0($a0)		
+	move	$a0, $t6		# a0 dich xuong
+	j 	shift	
+shiftend:
+	jr	$ra			# Return
+	
+
+# In mang
+print:	
+	addi	$sp, $sp, -16
+	sw	$ra, 0($sp)
+	li	$t0, 0
+printloop:
+	lw	$t1,n
+	bge	$t0,$t1,printend
+	sll	$t2,$t0,2
+	lw	$t3,mang($t2)
+	move	$a0,$t3	
+	li	$v0,1				
+	syscall
+	la	$a0,space
+	li	$v0,4				
+	syscall	
+	addi	$t0,$t0,1
+	j	printloop
+printend:	
+	la	$a0,endline
+	li	$v0,4				
+	syscall		
+	lw	$ra, 0($sp)
+	addi	$sp, $sp, 16
+	jr 	$ra	
+
+end:	
+	li	$v0,10
+	syscall

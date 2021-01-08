@@ -1,0 +1,361 @@
+
+.data
+Array: 		.word -32,-54,14,50,204,49,24,40,403,20,203,402,55,44,50,502,405,302,405,430
+Array_size: 	.space 4
+Array_size2: 	.word 20
+bandau:		.asciiz "Mang ban dau : "
+Squicksort:	.asciiz "Sau khi quick sort : "
+space:		.asciiz " "
+newLine:	.asciiz "\n"
+hamin:		.asciiz "\nGoi ham in\n"
+hamQuickSort:	.asciiz "\nGoi ham QuickSort\n"
+hamSwap:		.asciiz "\nGoi ham Swap\n"
+hamPartition: 	.asciiz "\nGoi ham Partition\n"
+bigloop: 	.asciiz "\nLabel Big Loop\n"
+leftloop:	.asciiz "\nLabel Reft Loop\n"
+rightloop:	.asciiz "\nLabel Right Loop\n"
+breakloop:	.asciiz "\nLabel Break Loop\n"
+.text
+.globl main
+
+main:
+	# luu dia chi cho trong chua Array size
+	la	$t0, Array_size
+	# load dia chi Array vao bo nho
+	la	$t1, Array
+	# tru de tinh ra so byte da cap
+	sub	$t2, $t0, $t1
+	# chia 4 byte / word de tinh so luon nhap vao array
+	srl	$t2, $t2, 2
+	# load size vao t2
+	sw	$t2, 0($t0)	#size 
+	# in chuoi ban dau
+	li	$v0, 4
+	la	$a0, bandau
+	syscall
+	#thuc hien vong lap in ra tu phan tu trong mang
+	jal	PRINT		
+	
+	# luu dia chi bat dau array truyen lam doi so
+	la	$a0, Array
+	# luu index 0 vao a0 lam doi so
+	li	$a1, 0		#low
+	# a2 = Array_size - 1 (de lay index cuoi cung trong day)
+	lw	$t0, Array_size
+	# lay index cao nhat
+	addi	$t0, $t0, -1
+	# luu vao a2 lam doi so
+	addu	$a2, $t0,$0	#high
+	
+	# Call quick sort
+	# goi ham quicksort ( tham so gom a0 = Array , a1 = index 0, a2 = index 19 )
+	jal	QuickSort
+
+	# in mang sau khi sap xep
+	li	$v0, 4
+	la	$a0, Squicksort
+	syscall
+	# in mang
+	jal	PRINT
+
+	
+	# ket thuc chuong trinh
+	li	$v0, 10
+	syscall
+
+	
+PRINT:
+	# load dia chi array va so luong mang
+	la	$s0, Array
+	lw	$t0, Array_size
+	
+Loop_main1: # dung de in phan tu cua mang
+	# neu t0 = 20 ma = 0 thi chay label ket thuc
+	beq	$t0, $zero, Loop_main1_done
+	# tao khoang trang
+	li	$v0, 4
+	la	$a0, space
+	syscall
+	# in phan tu
+	li	$v0, 1
+	lw	$a0, 0($s0)
+	syscall
+	# giam kich thuoc Array size xuong 1
+	addi	$t0, $t0, -1
+	# dich dia chi len 4 byte
+	addi	$s0, $s0, 4
+	
+	j		Loop_main1
+Loop_main1_done:
+	#in ra xuong dong 
+	li	$v0, 4
+	la	$a0, newLine
+	syscall
+	# tro ve ham goi Print
+	jr		$ra
+	
+#----------------------------------------
+swap:
+	add $t6 ,$0, $a0
+	li	$v0, 4
+	la	$a0, hamSwap
+	syscall
+	
+	add $a0, $0, $t6
+	# khoi tao cap phat vung nho cho stack fram 
+	add 	$sp, $sp, -20	
+	# thong so truyen vao thu 1
+	sw 	$a0, 0($sp)		# luu doi so vao stack
+	# thong so truyen vao thu 2
+	sw 	$a1, 4($sp)
+	# thong so truyen vao thu 3
+	sw	$a2, 8($sp)
+	sw	$s0, 12($sp)
+	sw	$s1, 16($sp)
+	# con tro phan tu left
+	sll	$t0, $a1, 2		# t0 = x * 4
+	add	$t0, $a0, $t0	# t0 = array + 4*x
+	lw 	$s0, 0($t0)		# s0 = &array[x]
+	# con tro phan tu right
+	sll	$t1, $a2, 2		# t1 = y * 4
+	add	$t1, $a0, $t1	# t1 = array + 4*y
+	lw 	$s1, 0($t1)  	# s1 = &array[y]
+	# Swap
+	sw 	$s0, 0($t1)		
+	sw 	$s1, 0($t0)
+	
+	lw	$a0, 0($sp)		# tai doi so tu stack ve thanh ghi
+	lw	$a1, 4($sp)
+	lw	$a2, 8($sp)
+	lw	$s0, 12($sp)
+	lw	$s1, 16($sp)
+	
+	# tra lai vung nho da cap phat o tren
+	addi	$sp, $sp, 20	
+	jr	 $ra			# nhay ve ham goi, tra lai gia tri 
+#-------------------------------------------------------------------------------
+#int partition(int arr[], int low, int high)
+#{
+#	int pivot = arr[high]; // pivot  
+#	int i = (low - 1); // Index of smaller element  
+#	int left = low;
+#	int right = high - 1;
+#	while (left <= right) {
+#       	while (arr[left] < pivot)
+#      		{
+#           		left++;
+#       	}
+#       	while (arr[right] > pivot)
+#       	{
+#           	right--;
+#       	}
+#       	if (left <= right) {
+#           	swap(&arr[left], &arr[right]);
+#           	left++;
+#           	right--;
+#       }
+#   }
+#	swap(&arr[left], &arr[high]);
+#	return left;
+#}
+#----------------------------------------------------
+partition:
+	# Khoi tao stack de luu cac doi so, cap phat vung nho (xem giai thuat can luu 4 gia tri: pivot, i, left right)
+	add $t6 ,$0, $a0
+	li	$v0, 4
+	la	$a0, hamPartition
+	syscall
+	
+	add $a0, $0, $t6
+	
+	add	$sp, $sp, -16		
+	sw	$a0, 0($sp)		# luu cac doi so vao stack
+	sw	$a1, 4($sp)		
+	sw	$a2, 8($sp)		
+	sw	$ra, 12($sp)		# luu dia chi tra ve
+	
+	addu	$s0, $a1,$0		# s0 = low = left
+	addu	$s1, $a2,$0		# s1 = high
+	
+	addu	$t5, $s1,$0		# t5 = high: save pivot index
+	
+	sll	$t0, $s1, 2		# t0 = 4 * high
+	add	$t0, $a0, $t0		# t0 = array + 4*high
+	lw	$s3, 0($t0)		# s3 = arr[high]=== (pivot)
+
+	subi	$s1, $s1, 1		# s1 = high - 1 = right
+#-----------------------------------
+
+	BigLoop:
+		# while(left <= right && arr[left] < pivot) left++;
+		LeftLoop:
+			
+			add $t6 ,$0, $a0
+			li	$v0, 4
+			la	$a0, leftloop
+			syscall
+	
+			add $a0, $0, $t6
+		
+			sll	$t1, $s0, 2		# t1 = left * 4
+			add	$t1, $a0, $t1	# t1 = array + 4*left
+			lw	$t2, 0($t1)		# t2 = &array[left]
+			
+			# kiem tra left <= right
+			blt	$s1, $s0, LeftLoopDone 
+			#kiem tra arr[left] < pivot
+			bge	$t2, $s3, LeftLoopDone			
+			
+			#left++
+			addi	$s0, $s0, 1
+			
+			j	LeftLoop
+		
+		LeftLoopDone:
+		
+		# while(right >= left && arr[right] > pivot) right--; 
+		RightLoop:
+			add $t6 ,$0, $a0
+			li	$v0, 4
+			la	$a0, rightloop
+			syscall
+	
+			add $a0, $0, $t6
+			
+			
+			sll	$t3, $s1, 2		# t3 = right * 4
+			add	$t3, $a0, $t3	# t3 = array + 4*right
+			lw	$t4, 0($t3)		# t4 = &array[right]
+			
+			# kiem tra right >= left
+			bgt	$s0, $s1, RightLoopDone 
+			#kiem tra arr[right] > pivot
+			ble	$t4, $s3, RightLoopDone		
+			
+			#right--
+			subi	$s1, $s1, 1
+			
+			j	RightLoop
+		
+		RightLoopDone:
+		
+		#if (left >= right) break;	
+		bge	$s0, $s1, BreakLoop
+		
+		addu	$a1, $s0,$0	
+		addu	$a2, $s1,$0
+		jal	swap
+		
+		
+		
+										# swap(a[left], a[right])
+continue1:	addi 	$s0, $s0, 1		# left++
+		subi 	$s1, $s1, 1		# right--
+		j  	BigLoop
+#-----------------------------------------------	
+	BreakLoop:
+			add $t6 ,$0, $a0
+			li	$v0, 4
+			la	$a0, breakloop
+			syscall
+	
+			add $a0, $0, $t6
+		addu	$a1, $s0,$0
+		addu	$a2, $t5,$0
+		jal	swap
+		jal PRINT2
+			# swap(a[left], pivot)
+		add	$v0, $s0, 0		# Return left
+	
+		lw	$a0, 0($sp)		# tai doi so duoc luu trong stack ve thanh ghi
+		lw	$a1, 4($sp)
+		lw	$a2, 8($sp)	
+		lw	$ra, 12($sp)
+		addi	$sp, $sp, 16	# stack trong
+		jr	$ra			# tro lai ham goi
+
+
+#------------------------------------------------------------------
+#void quickSort(int arr[], int low, int high)
+#{
+#    if (low < high)
+#    {
+#       int pi = partition(arr, low, high);
+#
+#       quickSort(arr, low, pi - 1);
+#        quickSort(arr, pi + 1, high);
+#    }
+#}
+#------------------------------------------------------
+QuickSort:
+	# cap vung nho stack farm 
+	add $t6 ,$0, $a0
+	li	$v0, 4
+	la	$a0, hamQuickSort
+	syscall
+	
+	add $a0, $0, $t6
+	
+	add	$sp, $sp, -20	# khoi tao stack
+	
+	sw	$a0, 0($sp)		# luu doi so vao stacj stack
+	sw	$a1, 4($sp)		#low
+	sw	$a2, 8($sp)		#high
+	sw	$s1, 12($sp)		# luu lai gia tri cua mang
+	sw	$ra, 16($sp)		# luu dia chi tra ve cua thanh ghi ra vi trong ham co goi ham khac
+	
+	bge	$a1, $a2, EndQuickSort	# neu (low >= high) ket thuc QuickSort, nhay den label EndQuickSort
+					# nguoc lai neu low < high tiep tuc goi ham partition de phan vung
+	jal	partition		# goi ham partition
+
+	addu	$s4, $v0,0		# tra ve pivot moi (p), dua gia tri tra ve vao v0
+
+	
+	lw	$a1, 4($sp)		# a1 = low	
+	subi	$a2, $s4, 1	# a2 = pivot - 1 
+	jal	QuickSort		# goi ham QuickSort
+
+	addi	$a1, $s4, 1	# a1 = p + 1
+	lw	$a2, 8($sp)		# a2 = high
+	jal	QuickSort		# goi ham QuickSort
+	
+	EndQuickSort: 
+		lw	$a0, 0($sp)		# tai doi so duoc luu trong stack ve thanh ghi
+		lw	$a1, 4($sp)		# Pop gia tri thanh ghi da luu vao stack luc dau
+		lw	$a2, 8($sp)		
+		lw	$s1, 12($sp)
+		lw	$ra, 16($sp)
+		addi	$sp, $sp, 20	# tra lai stack farm da cap
+		jr	$ra			# tro lai ham goi bang dia chi duoc luu trong thanh ghi $ra
+
+	
+PRINT2:
+	# load dia chi array va so luong mang
+	la	$s5, Array
+	lw	$t5, Array_size
+	
+Loop_main2: # dung de in phan tu cua mang
+	# neu t0 = 20 ma = 0 thi chay label ket thuc
+	beq	$t5, $zero, Loop_main2_done
+	# tao khoang trang
+	li	$v0, 4
+	la	$a0, space
+	syscall
+	# in phan tu
+	li	$v0, 1
+	lw	$a0, 0($s5)
+	syscall
+	# giam kich thuoc Array size xuong 1
+	addi	$t5, $t5, -1
+	# dich dia chi len 4 byte
+	addi	$s5, $s5, 4
+	
+	j		Loop_main2
+Loop_main2_done:
+	#in ra xuong dong 
+	li	$v0, 4
+	la	$a0, newLine
+	syscall
+	# tro ve ham goi Print
+	jr		$ra
+	
